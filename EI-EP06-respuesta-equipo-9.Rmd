@@ -1,0 +1,132 @@
+---
+title: "EI-EP06-respuesta-equipo-9"
+output: html_document
+date: "2025-11-25"
+---
+Un equipo de investigadores del area de interacción humano-información está estudiando si el area temática y el nivel de dificultad del problema de información influyen en el tiempo (en segundos) que toma un usuario en formular una consulta de búsqueda para resolver dicho problema. Para ello, han reclutado a un grupo de participantes voluntarios, asignados aleatoriamente a distintos grupos. Cada participante debe resolver tres problemas de información con diferentes niveles de dificultad: baja, media y alta. A su vez, cada grupo debe resolver problemas relacionados a una temática diferente, las cuales se muestran a continuación:
+
+```{r setup}
+#Se importa la libreria para hacer la tabla
+library(knitr)
+library(kableExtra)
+#Se crea una tabla para mostrar las variables y su descripción
+tabla_variables <- data.frame(Variable = c("id", "area", "dificultad", "tiempo"),
+                              Descripcion = c("Identificador único de cada participante", "Area tematica de la que se busca información", "Nivel de dificultad de los problemas de información", "Tiempo (en segundos) que se demora un participante en resolver el problema"))
+
+#Se muestra la tabla
+kable(tabla_variables, align = c("c", "l")) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+                full_width = FALSE,
+                position = "center") %>%
+  row_spec(0, bold = TRUE, color = "white", background = "black") %>%
+  column_spec(1, bold = TRUE, color = "blue")
+```
+
+En este momento, los investigadores buscan determinar si existen diferencias en el tiempo que tardan los usuarios en formular consultas para problemas con diferente nivel de dificultad en el area de arquitectura.
+
+Para empezar, se importan las muestras utilizando read.csv() ya que se debe trabajar sobre ellos. Una vez importadas las muestras se filtran para que solo hayan participantes que hayan realizado los problemas del area de arquitectura, después, se mostrarán unos pocos para entender las muestras con las que vamos a trabajar.
+
+```{r, message=FALSE}
+#Se importa la libreria necesaria para filtrar por area
+library(dplyr)
+
+#Se importan las muestras
+datos <- read.csv("EP06 Datos.csv")
+
+##Se filtran las muestras por arquitectura
+datos_filtrados <- datos %>%
+  filter(area == "Arquitectura")
+
+#Se muestran unos pocos datos
+head(datos_filtrados)
+```
+
+Ya filtradas las muestras, se verifican los tipos de las variables del conjunto para revisar que todas sean del tipo que deben ser.
+
+```{r}
+#Se verifican las muestras
+glimpse(datos_filtrados)
+```
+
+Como se puede observar, los tipos de datos son correctos; sin embargo, dado que utilizaremos las variables categóricas para analizarlas, las convertiremos a factores para facilitar su manejo. Posteriormente, se mostrarán nuevamente para confirmar que el tipo de dato fue cambiado correctamente.
+
+```{r}
+#Se modifican los tipos de datos de id, area y dificultad
+datos_filtrados[["id"]] <- factor(datos_filtrados[["id"]])
+datos_filtrados[["area"]] <- factor(datos_filtrados[["area"]])
+datos_filtrados[["dificultad"]] <- factor(datos_filtrados[["dificultad"]])
+
+glimpse(datos_filtrados)
+```
+
+Una vez que las muestras están listas, se procede a plantear tanto la hipótesis nula como la hipótesis alternativa a contrastar en esta investigación:
+
+$H_0$: En promedio, no hay diferencias en los tiempos requeridos por los usuarios que formulan consultas para problemas con diferente nivel de dificultad en el area de arquitectura.
+
+$H_a$: La media de las diferencias en los tiempos requeridos por los usuarios que formulan consultas para problemas con diferente nivel de dificultad es diferente para al menos un par de dificultades estudiadas.
+
+Matemáticamente, sean $t_b$, $t_m$ y $t_a$ los tiempos de requeridos por los usuarios que formulan preguntas de nuvel bajo, medio y alto respectivamente. Se denota $d_{X-Y}$ como la diferencia en los tiempos requeridos por los usuarios que formulan preguntas de dificultad X e Y (es decir:$d_{X-Y} = t_X - t_Y$) con $X, Y \in \{b, m, a\}$, entonces: 
+
+$H_0$: $\mu_{d_{b-m}} = \mu_{d_{b-a}} = \mu_{d_{m-a}} = 0$
+
+$H_a$: $\exists X,Y \in \{b, m, a\}, X \neq Y | \mu_{d_{X-Y}} \neq 0$
+
+Ya definidas las hipótesis a contrastar definiremos el tipo de prueba ANOVA a utilizar. Ya que en el enunciado se especifica que a cada participante se le asignan tres problemas de información con diferentes niveles de dificultad (baja, media y alta) se puede decir que las muestras están correlacionadas, ya que un mismo participante debe resolver todos los niveles de la variable independiente (nivel de dificultad). Después de definir el tipo de procedimiento ANOVA, se procede a verificar las condiciones que se deben cumplir para poder realizar la prueba de esta:
+
+1. **La escala con que se mide la variable dependiente tiene las propiedades de una escala de intervalos iguales.** Ya que la variable dependiente es el tiempo, esta se mide en una escala de intervalos iguales (como toda magnitud física) a no ser que se especifique lo contrario, en este caso no es así, por lo tanto los intervalos son iguales y son de 1 segundo.
+
+2. **Las observaciones son independientes al interior de cada muestra** El enunciado señala que los investigadores han reclutado a un grupo de participantes voluntarios, asignados aleatoriamente a distintos grupos, para que así el rendimiento de uno no afecte al de otro. A su vez, se debe obtener el tamaño de la muestra para verificar que estas son menos del 10% de la población mundial.
+
+```{r}
+#Se calcula el tamaño de la muestra
+largo <- nrow(datos_filtrados)
+
+#Se muestran el largo
+cat(paste("Cantidad de muestras = ", largo))
+```
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Como se puede observar, la cantidad de muestras claramente son menor al 10% de la población mundial, por ende, las muestras son &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;independientes al interior de cada muestra.
+
+3. **Se puede suponer razonablemente que la(s) población(es) de origen sigue(n) una distribución normal.** Para verificar esta condición, se realizará un grafico Q-Q para visualizar su distribución y si siguen aproximadamente una distribución normal.
+
+```{r, message=FALSE}
+#Se importa la libreria necesaria para realizar el gráfico
+library(ggpubr)
+#Se crean los gráficos Q-Q para los tres niveles de dificultad
+g1 <- ggqqplot(datos_filtrados, x = "tiempo", y = "dificultad", alpha = 0.7, palette = c("steelblue","steelblue1","steelblue4"))
+g1 <- g1 + facet_wrap(~ dificultad)
+g1 <- g1 + rremove("x.ticks") + rremove("x.text")
+g1 <- g1 + rremove("y.ticks") + rremove("y.text")
+g1 <- g1 + rremove("axis.title")
+
+#Se muestran los gráficos
+print(g1)
+```
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Como se observa en los gráficos, las dificultades alta y media sí cumplen con la condición de normalidad aunque hayan un par de valores &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;en cada muestra que estén al límite de la línea teórica, sin embargo, con el gráfico de la dificultad baja hay algunos datos desviados del &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;límite de la línea teórica pero aún cerca de este, por lo que se puede decir que también sigue una distribución normal, no obstante, para &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;proceder con cautela y evitar errores de tipo I, se usará un nivel de significación más exigente, el cual será: $\alpha$ = 0.025.
+
+4. **La matriz de varianzas-covarianzas es esférica. Esta condición establece que las varianzas entre los diferentes niveles de las medidas repetidas deben ser iguales.** Ya que esta condición es difícil de revisar manualmente, se utilizará y revisará la prueba de esfericidad de Mauchly integrada en ezAnova() al momento de realizar la prueba. Así que de momento **suponemos** que esta condición se cumple hasta realizar la prueba.
+
+Debido a que se cumplen las cuatro condiciones, se puede realizar la prueba ANOVA ómnibus, se utilizará la función ezANOVA() para esto debido a lo mencionado en la verificación de la condicion 4.
+
+```{r, warning=FALSE}
+#Se importa la libreria necesaria para realizar la prueba ANOVA
+library(ez)
+
+#Se realiza y se muestra el procedimiento ANOVA
+prueba_ez <- ezANOVA(data = datos_filtrados, dv= tiempo, wid = .(id), within = dificultad)
+print(prueba_ez)
+
+```
+
+Antes de revisar el resultado de la prueba ANOVA, se verifica que la condición 4 efectivamente se cumpla. Revisando la seccion con el título `Mauchly's Test for Sphericity`, podemos apreciar que la prueba no resulta significativa para la investigación ($W = 0.994; p = 0.532$), por lo que no se puede descartar que los datos de la investigación cumplan con la condición de esfericidad, que es la hipótesis nula de la prueba de Mauchly. Para confirmar esto, se muestra también la correción de esfericidad en donde nos apoyaremos de la correción de Greenhouse-Geisser ya que $e > 0.75$, más especificamente 0.994, lo que confirma que la condición de esfericidad es casi perfecta y confirma nustra suposición, la cuarta condición sí se cumple.
+
+Ahora, fijandonos en el resultado de la prueba ANOVA, se puede observar en la tabla que el valor de p es extremadamente inferior al nivel de significancia $\alpha$ establecido, ya que $1.45 * 10^{-32} < 0.025$. Por lo tanto, se rechaza la hipótesis nula en favor de la hipótesis alternativa. En consecuencia, se puede decir con un 97.5% de confianza que los tiempos requeridos por los usuarios que formulan consultas para problemas con diferente nivel de dificultad es diferente para **al menos** un par de dificultades estudiadas.
+
+A causa de que se rechazó la hipótesis nula en favor de la alternativa, una de las dificultades comparadas tiene tiempos requeridos por los usuarios que formulan consultas para problemas significativamente diferente al resto, en consecuencia, se debe realizar un procedimiento post-hoc para determinar esta diferencia y a que dificultades pertenece.
+
+```{r}
+g2 <- ezPlot(data = datos_filtrados, dv = tiempo, wid = .(id), within = dificultad,
+             y_lab = "Tiempo promedio", x = dificultad)
+print(g2)
+```
