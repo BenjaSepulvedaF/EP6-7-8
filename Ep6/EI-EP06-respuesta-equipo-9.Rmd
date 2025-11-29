@@ -11,7 +11,7 @@ Un equipo de investigadores del area de interacción humano-información está e
 #Se importa la libreria para hacer la tabla
 library(knitr)
 library(kableExtra)
-library (emmeans)
+
 #Se crea una tabla para mostrar las variables y su descripción
 tabla_variables <- data.frame(Variable = c("id", "area", "dificultad", "tiempo"),
                               Descripcion = c("Identificador único de cada participante", "Area tematica de la que se busca información", "Nivel de dificultad de los problemas de información", "Tiempo (en segundos) que se demora un participante en resolver el problema"))
@@ -132,23 +132,31 @@ g2 <- ezPlot(data = datos_filtrados, dv = tiempo, wid = .(id), within = dificult
              y_lab = "Tiempo promedio", x = dificultad)
 print(g2)
 ```
+
 En el gráfico se observa una disminución consistente del tiempo promedio a medida que disminuye la dificultad. El nivel de dificultad Alta muestra el mayor tiempo promedio, separándose de manera evidente de los niveles Media y Baja, que presentan tiempos considerablemente menores.
 
-Aunque visualmente se aprecia una diferencia clara entre los tres niveles de dificultad, especialmente entre la condición Alta respecto de Baja y Media, es necesario aplicar un análisis post-hoc para determinar si estas diferencias son estadísticamente significativas, ya que el gráfico por sí solo no permite concluirlo con total certeza.
+Aunque visualmente se aprecia una diferencia clara entre los tres niveles de dificultad, especialmente entre la condición Alta respecto de Baja y Media por lo que, como se mencionó anteriormente, es necesario aplicar un análisis post-hoc para determinar si estas diferencias son estadísticamente significativas, ya que el gráfico por sí solo no permite concluirlo con total certeza.
 
-```{r}
-#Como se mencionó más arriba, debido a las medidas que se escapan del límite teórico,
-#se utilizará un nivel de significancia más estricto de α = 0.025
+La prueba post-hoc elegida una prueba de contraste, ya que compara todos pares de grupos (niveles de dificultad en este caso). Sin embargo, esta prueba no puede aplicarse directamente. Antes de empezar, cabe mencionar que se utilziará el mismo $\alpha$ que se utilizó para el procedimiento ANOVA, el cual es de 0.025. Con el $\alpha$ establecido, primero se debe calcular las medias marginales estimadas (EMM) de las muestras ya que coinciden numéricamente con las medias muestrales observadas en los datos. El valor de calcularlas en este caso es que se obtienen de manera consistente junto con sus errores estándar e intervalos de confianza, que necesitamos para realizar la comparacion post-hoc.
+
+```{r, message=FALSE}
+#Se importa la libreria necesaria para calcular el EMM y realizar el procedimiento post-hoc
+library (emmeans)
+
+# Nivel de significancia
+alfa <- 0.025
 
 # Ajuste del modelo para emmeans (ANOVA de medidas repetidas)
 modelo <- aov(tiempo ~ dificultad + Error(id/dificultad), data = datos_filtrados)
 
 # Cálculo de medias estimadas
 medias_estimada <- emmeans(modelo, ~ dificultad)
+print(summary(medias_estimada, infer = TRUE, level = 1 - alfa, null = mean(datos_filtrados$tiempo)))
+```
 
-# Nivel de significancia
-alfa <- 0.025
+Una vez obtenidas las EMM, se procede a realizar los diferentes contrastes mediante la función contrast(x, method) con las correcciones HSD de Tukey.
 
+```{r}
 # Procedimiento post-hoc HSD de Tukey
 hsd <- contrast(
   medias_estimada,
@@ -158,12 +166,11 @@ hsd <- contrast(
 )
 
 cat("\nProcedimiento HSD de Tukey\n")
-cat("----------------------------\n")
 print(summary(hsd, infer = TRUE))
 
 ```
 
-El procedimiento post-hoc HSD de Tukey, aplicado con un nivel de confianza del 97.5% (α = 0.025), reveló diferencias significativas entre los tres niveles de dificultad analizados. En particular, se observó que:
+El procedimiento post-hoc HSD de Tukey, aplicado con un nivel de confianza del 97.5% ($\alpha$ = 0.025), reveló diferencias significativas entre los tres niveles de dificultad analizados. En particular, se observó que:
 
 Alta vs Baja: la diferencia estimada entre medias fue de 5.71 segundos, con un intervalo de confianza del 97.5% entre 3.82 y 7.60, y un valor p ajustado < 0.0001, indicando una diferencia significativa.
 
