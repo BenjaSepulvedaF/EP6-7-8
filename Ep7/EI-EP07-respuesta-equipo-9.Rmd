@@ -6,4 +6,26 @@ date: "2025-11-29"
 En el trabajo de título de una estudiante del DIINF se reportan tiempos de ejecución (en milisegundos) y la cercanía con la solución óptima (en por ciento) de la mejor solución encontrada con tres versiones de un algoritmo genético para resolver instancias del problema del vendedor viajero disponibles en repositorios públicos. Ahora debe enfrentar el análisis de estos datos, por que está solicitando ayuda de las y los estudiantes de Estadística Inferencial.
 ```{r}
 
+datos <- read.csv("EP07 Datos.csv")
+
+# 1. Filtrar instancias con n.nodos >= 45
+datos_filtrados <- subset(datos, n.nodos >= 45)
+
+# 2. Establecer semilla y muestrear INSTANCIAS, no tiempos
+set.seed(71)
+instancias_muestra <- sample(1:nrow(datos_filtrados), 45)  # 23 + 22 = 45
+
+# 3. Asignar aleatoriamente cada instancia a un grupo
+instancias_A <- sample(instancias_muestra, 23)
+instancias_B <- setdiff(instancias_muestra, instancias_A)
+
+# 4. Extraer UN SOLO tiempo por instancia
+tiempos_A <- datos_filtrados[instancias_A, "tiempo.A"]
+tiempos_B <- datos_filtrados[instancias_B, "tiempo.B"]
+
+# VERIFICACIÓN: asegurar que no hay instancias repetidas
+cat("Instancias en A:", length(unique(instancias_A)), "\n")
+cat("Instancias en B:", length(unique(instancias_B)), "\n")
+cat("Intersección:", length(intersect(instancias_A, instancias_B)), "\n")  # Debe ser 0
+
 ```
