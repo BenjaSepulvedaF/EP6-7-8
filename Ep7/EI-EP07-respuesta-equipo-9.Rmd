@@ -4,6 +4,11 @@ output: html_document
 date: "2025-11-29"
 ---
 En el trabajo de título de una estudiante del DIINF se reportan tiempos de ejecución (en milisegundos) y la cercanía con la solución óptima (en por ciento) de la mejor solución encontrada con tres versiones de un algoritmo genético para resolver instancias del problema del vendedor viajero disponibles en repositorios públicos. Ahora debe enfrentar el análisis de estos datos, por que está solicitando ayuda de las y los estudiantes de Estadística Inferencial.
+
+
+1.- Observando los datos, la memorista sospecha que hay diferencias significativas en el tiempo de ejecución entre las versiones A y B del algoritmo cuando las instancias tienen 45 o más nodos. ¿Los datos respaldan la intuición de la memorista?
+Para responder, filtren los datos para tener las instancias con 45 o más nodos y seleccionen las columnas de los tiempos de ejecución de las versiones A y B en formato ancho. Usando como semilla el valor 71, obtenga muestras aleatorias independientes de 23 tiempos registrados por la versión A y 22 tiempos registrados por la versión B del algoritmo. Realicen un análisis estadístico pertinente (enunciar hipótesis, revisar condiciones, seleccionar pruebas ómnibus y post-hoc según corresponda) para responder la pregunta planteada, utilizando pruebas no paramétricas de ser necesario.
+
 ```{r}
 
 datos <- read.csv("EP07 Datos.csv")
@@ -23,9 +28,144 @@ instancias_B <- setdiff(instancias_muestra, instancias_A)
 tiempos_A <- datos_filtrados[instancias_A, "tiempo.A"]
 tiempos_B <- datos_filtrados[instancias_B, "tiempo.B"]
 
-# VERIFICACIÓN: asegurar que no hay instancias repetidas
-cat("Instancias en A:", length(unique(instancias_A)), "\n")
-cat("Instancias en B:", length(unique(instancias_B)), "\n")
-cat("Intersección:", length(intersect(instancias_A, instancias_B)), "\n")  # Debe ser 0
+
+# Verificamos normalidad utilizando Shapiro Test
+shapiro.test(tiempos_A)
+
+shapiro.test(tiempos_B)
+
 
 ```
+
+A no cumple normalidad, entonces se realiza wilcoxon
+
+Las condiciones para poder realizarla son:
+1. Las muestras son independientes.
+2. Las observaciones son al menos ordinales.
+
+Respecto a la primera condicion se cumple ya que las instancias fueron asignadas aleatoriamente a cada grupo.
+Respecto a la segunda condicion, los tiempos de ejecucion son datos cuantitativos continuos, por lo que se cumple la condicion.
+
+
+Planteamos las hipótesis
+Hipótesis:
+
+H0: No hay diferencia en los tiempos de ejecución entre las versiones A y B.
+
+HA: Hay diferencia en los tiempos de ejecución entre las versiones A y B.
+
+
+```{r}
+alpha <- 0.05
+# Realizar prueba de Wilcoxon-Mann-Whitney
+prueba <- wilcox.test(tiempos_A, tiempos_B, alternative = "two.sided", conf.level = 1-alfa)
+print(prueba)
+
+
+```
+Como se utilizó un nivel de significancia de 0.05 y el p-valor obtenido es 0.2838, no se rechaza la hipótesis nula. Por lo tanto, no hay evidencia suficiente para afirmar que existen diferencias significativas en los tiempos de ejecución entre las versiones A y B del algoritmo cuando las instancias tienen 45 o más nodos.
+
+
+2.- La memorista también sospecha que, al comparar las mismas instancias de iguales características, las mejores soluciones encontradas por las versiones A y C tienen rendimientos distintos. ¿Estará en lo cierto?
+Para responder, filtren los datos para tener las instancias con 45 o más nodos y seleccionen las columnas con el mejor rendimiento de las versiones A y C en formato ancho. Usando como semilla el valor 54, obtengan una muestra aleatoria de 20 instancias. Realicen un análisis estadístico pertinente (enunciar hipótesis, revisar condiciones, seleccionar pruebas ómnibus y post-hoc según corresponda) para responder la pregunta planteada, utilizando pruebas no paramétricas de ser necesario.
+
+```{r}
+
+# 1. Filtrar instancias con n.nodos >= 45
+datos_filtrados <- subset(datos, n.nodos >= 45)
+# 2. Establecer semilla y muestrear INSTANCIAS
+set.seed(54)
+instancias_muestra <- sample(1:nrow(datos_filtrados), 20)
+# 3. Extraer los rendimientos de las versiones A y C para las instancias seleccionadas
+rendimientos_A <- datos_filtrados[instancias_muestra, "mejor.A"]
+
+rendimientos_C <- datos_filtrados[instancias_muestra, "mejor.C"]
+
+```
+
+
+
+----------------------------------------------
+
+
+
+3.- La memorista sospecha que hay diferencias significativas en el tiempo de ejecución entre las versiones del algoritmo cuando las instancias de prueba tienen 70 o más nodos. ¿Los datos respaldan la intuición de la memorista?
+Para responder, filtren los datos para tener las instancias con 70 o más nodos y seleccionen las columnas con los tiempos de ejecución registrados (en formato ancho). Usando como semilla el valor 31, obtengan muestras aleatorias independientes de 17, 13 y 15 tiempos registrados por las versiones A, B y C, respectivamente. Realicen un análisis estadístico pertinente (enunciar hipótesis, revisar condiciones, seleccionar pruebas ómnibus y post-hoc según corresponda) para responder la pregunta planteada, utilizando pruebas no paramétricas de ser necesario.
+
+
+
+
+H0: No hay diferencia en los tiempos de ejecución entre A, B y C.
+
+HA: Al menos una versión tiene tiempos de ejecución diferentes.
+
+
+Muestras independientes (cada instancia contribuye a una sola versión).
+Escala de tiempo es al menos ordinal.
+No se asume normalidad.
+```{r}
+
+# Filtrar datos para instancias con n.nodos >= 70
+datos_filtrados70 <- subset(datos, n.nodos >= 70)
+
+# Establecer semilla y obtener muestras independientes
+set.seed(31)
+muestra_A <- sample(datos_filtrados70$tiempo.A, 17)
+muestra_B <- sample(datos_filtrados70$tiempo.B, 13)
+muestra_C <- sample(datos_filtrados70$tiempo.C, 15)
+
+# Combinar datos para Kruskal-Wallis
+tiempos <- c(muestra_A, muestra_B, muestra_C)
+grupos <- factor(c(rep("A", 17), rep("B", 13), rep("C", 15)))
+
+# Prueba de Kruskal-Wallis
+prueba_omnibus <- kruskal.test(tiempos ~ grupos)
+print(prueba_omnibus)
+
+# Si es significativa (p < 0.05), realizar post-hoc con corrección de Holm
+if (prueba_omnibus$p.value < 0.05) {
+  posthoc <- pairwise.wilcox.test(tiempos, grupos, p.adjust.method = "holm", paired = FALSE)
+  print(posthoc)
+}
+
+```
+
+El valor p obtenido fue de 0.02081, por lo que se rechaza la hipótesis nula. Por lo tanto, hay evidencia suficiente para afirmar que existen diferencias significativas en los tiempos de ejecución entre las versiones del algoritmo cuando las instancias de prueba tienen 70 o más nodos.
+
+
+
+4.- La memorista también sospecha que, al comparar las mismas instancias con iguales características, las mejores soluciones encontradas por las diferentes versiones del algoritmo tienen rendimientos distintos. ¿Estará en lo cierto?
+Para responder, filtren los datos para tener las instancias con 70 o más nodos y seleccionen las columnas con los mejores rendimientos registrados. Usando como semilla el valor 71, obtengan una muestra aleatoria de 21 instancias. Realicen un análisis estadístico pertinente (enunciar hipótesis, revisar condiciones, seleccionar pruebas ómnibus y post-hoc según corresponda) para responder la pregunta planteada, utilizando pruebas no paramétricas de ser necesario.
+
+H0: No hay diferencia en los rendimientos entre A, B y C.
+HA: Al menos una versión tiene rendimientos diferentes.
+
+
+```{r}
+
+# Filtrar datos para instancias con n.nodos >= 70
+datos_filtrados70 <- subset(datos, n.nodos >= 70)
+
+# Establecer semilla y obtener muestras independientes
+set.seed(71)
+muestra_A <- sample(datos_filtrados70$mejor.A, 21)
+muestra_B <- sample(datos_filtrados70$mejor.B, 21)
+muestra_C <- sample(datos_filtrados70$mejor.C, 21)
+
+# Combinar datos para Kruskal-Wallis
+rendimientos <- c(muestra_A, muestra_B, muestra_C)
+grupos <- factor(c(rep("A", 21), rep("B", 21), rep("C", 21)))
+
+# Prueba de Kruskal-Wallis
+prueba_omnibus <- kruskal.test(rendimientos ~ grupos)
+print(prueba_omnibus)
+
+# Si es significativa, realizar post-hoc con corrección de Holm
+if (prueba_omnibus$p.value < 0.05) {
+  posthoc <- pairwise.wilcox.test(rendimientos, grupos, p.adjust.method = "holm", paired = FALSE)
+  print(posthoc)
+}
+
+
+```
+Como el valor p fue de 0.002737, se rechaza la hipótesis nula. Por lo tanto, hay evidencia suficiente para afirmar que existen diferencias significativas en los rendimientos entre las diferentes versiones del algoritmo al comparar las mismas instancias con iguales características cuando tienen 70 o más nodos.
